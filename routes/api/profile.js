@@ -1,4 +1,6 @@
 const express = require("express");
+const request = require("request");
+const config = require("config");
 const { profile_url } = require("gravatar");
 const router = express.Router();
 const auth = require("../../middleware/auth");
@@ -7,6 +9,7 @@ const { check, validationResult } = require("express-validator");
 const Profile = require("../../models/Profile");
 const User = require("../../models/User");
 const { trusted } = require("mongoose");
+const { Octokit } = require("octokit");
 
 // @route GET api/profile/me
 router.get("/me", auth, async (req, res) => {
@@ -256,6 +259,28 @@ router.delete("/education/:edu_id", auth, async (req, res) => {
   } catch (err) {
     console.log(err.message);
     res.status(500).send("Server Error");
+  }
+});
+
+// @ Route GET api/profile/github/:username
+router.get("/github/:username", async (req, res) => {
+  try {
+    const octokit = new Octokit({
+      auth: config.get("githubToken"),
+    });
+    const { data } = await octokit.request(
+      "GET /users/{username}/repos?per_page=5&sort=created:asc",
+      {
+        username: req.params.username,
+      }
+    );
+    res.json(data);
+  } catch (err) {
+    if (err.status == 404) {
+      res.status(404).json({ msg: "No github profile found" });
+    } else {
+      res.status(500).send("Server Error");
+    }
   }
 });
 
